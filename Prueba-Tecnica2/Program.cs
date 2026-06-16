@@ -1,25 +1,30 @@
-var builder = WebApplication.CreateBuilder(args);
+using Prueba_Tecnica2.Data;
 
-// Add services to the container.
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+        var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+        // Add services to the container.
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+        builder.Services.AddControllers();
+        builder.Services.AddScoped<BibliotecaRepository>();
+        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
 
-app.UseHttpsRedirection();
+        var app = builder.Build();
 
-app.UseAuthorization();
+        // Configure the HTTP request pipeline.
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
 
-app.MapControllers();
+        app.UseHttpsRedirection();
 
-app.Run();
+        app.UseAuthorization();
+
+        app.MapControllers();
+
+        app.Run();
+    
