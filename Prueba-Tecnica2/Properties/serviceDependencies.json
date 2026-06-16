@@ -10,6 +10,11 @@
       "type": "mssql",
       "connectionId": "ConnectionStrings:BibliotecaDB1",
       "dynamicId": null
+    },
+    "mssql2": {
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:BibliotecaDb2",
+      "dynamicId": null
     }
   }
 }

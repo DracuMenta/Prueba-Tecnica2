@@ -3,6 +3,14 @@
     "apis1": {
       "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.ApiManagement/service/Prueba-Tecnica2api/apis/Prueba-Tecnica2",
       "type": "apis.azure"
+    },
+    "mssql2": {
+      "serviceConnectorResourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('serviceConnectorResourceGroupName')]/providers/Microsoft.Web/sites/BibliotecapPrueba/providers/Microsoft.ServiceLinker/linkers/ConnectionStringsBibliotecaDb2_8F28ADCE44",
+      "secretStore": "AzureAppSettings",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/pruebabiblioteca/databases/Biblioteca",
+      "type": "mssql.azure",
+      "connectionId": "ConnectionStrings:BibliotecaDb2",
+      "dynamicId": null
     }
   }
 }
