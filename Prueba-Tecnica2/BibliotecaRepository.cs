@@ -11,15 +11,8 @@ namespace Prueba_Tecnica2.Data
 
         public BibliotecaRepository(IConfiguration configuration)
         {
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
-            builder.DataSource = "MARTINXO";
-            builder.InitialCatalog = "Biblioteca";
-            builder.TrustServerCertificate = true;
-            builder.IntegratedSecurity = true;
-
-            _connectionString = builder.ConnectionString;
-
-            Console.WriteLine(_connectionString);
+            _connectionString =
+                configuration.GetConnectionString("BibliotecaDb");
         }
 
 
