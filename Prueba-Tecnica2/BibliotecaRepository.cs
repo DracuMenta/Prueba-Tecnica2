@@ -1,4 +1,6 @@
-﻿using MySql.Data.MySqlClient;
+﻿using System;
+using Microsoft.Data.SqlClient;
+using System.Text;
 using Prueba_Tecnica2.Models;
 
 namespace Prueba_Tecnica2.Data
@@ -9,21 +11,31 @@ namespace Prueba_Tecnica2.Data
 
         public BibliotecaRepository(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("BibliotecaDB");
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+            builder.DataSource = "MARTINXO";
+            builder.InitialCatalog = "Biblioteca";
+            builder.TrustServerCertificate = true;
+            builder.IntegratedSecurity = true;
+
+            _connectionString = builder.ConnectionString;
+
+            Console.WriteLine(_connectionString);
         }
+
+
 
         public LibroInfoResponse ObtenerLibro(string ISBN)
         {
             try { 
-                using var conn = new MySqlConnection(_connectionString);
+                using var conn = new SqlConnection(_connectionString);
 
                 conn.Open();
 
-                using var cmd = new MySqlCommand("obtener_info_libro", conn);
+                using var cmd = new SqlCommand("obtener_info_libro", conn);
 
                 cmd.CommandType = System.Data.CommandType.StoredProcedure;
 
-                cmd.Parameters.AddWithValue("ISBN_reg", ISBN);
+                cmd.Parameters.AddWithValue("@ISBN_reg", ISBN);
 
                 using var reader = cmd.ExecuteReader();
 
@@ -45,7 +57,7 @@ namespace Prueba_Tecnica2.Data
 
                 return null;
             }
-            catch (MySqlException ex)
+            catch (SqlException ex)
             {
                 if (ex.Message.Contains("El libro consultado no existe"))
                 {
@@ -56,13 +68,13 @@ namespace Prueba_Tecnica2.Data
             }
         }
 
-public string ConsultarDisponibilidad(string ISBN)
+        public string ConsultarDisponibilidad(string ISBN)
         {
-            using var conn = new MySqlConnection(_connectionString);
+            using var conn = new SqlConnection(_connectionString);
 
             conn.Open();
 
-            using var cmd = new MySqlCommand("SELECT disponibilidad(@ISBN_reg)", conn);
+            using var cmd = new SqlCommand("SELECT dbo.disponibilidad(@ISBN_reg)", conn);
 
             cmd.Parameters.AddWithValue("@ISBN_reg", ISBN);
 

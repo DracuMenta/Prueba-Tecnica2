@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using MySql.Data.MySqlClient;
 using Prueba_Tecnica2.Data;
 
 namespace Prueba_Tecnica2.Controllers
@@ -34,10 +33,11 @@ namespace Prueba_Tecnica2.Controllers
             }
             catch
             {
-                return StatusCode(500, new
-                {
-                    mensaje = "Error al conectar con la base de datos"
-                });
+                return StatusCode(500,
+                    new
+                    {
+                        mensaje = "Error al conectar con la base de datos"
+                    });
             }
         }
 
