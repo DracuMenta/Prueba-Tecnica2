@@ -1,0 +1,220 @@
+create database Biblioteca;
+go
+use Biblioteca;
+go
+
+create schema Biblioteca;
+go
+create table Autor(
+	ID_Autor varchar(10) primary key not null,
+	Nombre nvarchar(60) not null,
+	Pais_Origen nvarchar(48) not null
+);
+go
+
+create table Libro(
+	Codigo_ISBN varchar(13) primary key not null,
+	Titulo nvarchar(100) not null,
+	Fecha_publicacion date not null,
+	ID_Autor varchar(10) not null,
+	foreign key (ID_Autor) references Autor(ID_Autor)
+);
+go
+
+create table Usuario(
+	ID_Usuario varchar(10) primary key not null,
+	Tipo_ID varchar(10) check (Tipo_ID in('TI','CC','CE','PPT','Pasaporte')) not null,
+	Nombre nvarchar(60) not null,
+	Pais nvarchar(48) not null, 	
+	Ciudad nvarchar(27) not null,
+	Direccion varchar(100) not null,
+	Estado varchar(13) check (Estado in('Activo','Deshabilitado')) not null
+);
+go
+
+create table ControlPrestamos(
+	ID int identity(1,1) primary key,
+	ISBN varchar(13) not null,
+	ID_Usuario varchar(10) not null,
+	Dia_Prestamos date not null,
+	Dia_Devolucion date,
+	observacion nvarchar(200),
+	foreign key (ISBN) references Libro(Codigo_ISBN),
+	foreign key (ID_Usuario) references Usuario(ID_Usuario)
+);
+go
+
+create procedure obtener_prestamos 
+	as
+	begin
+		select P.ID, U.Nombre, L.Titulo, P.Dia_Prestamos
+		from ControlPrestamos P
+		inner join Libro L
+		on P.ISBN = L.Codigo_ISBN
+		inner join Usuario U
+		on P.ID_Usuario = U.ID_Usuario
+		where Dia_Devolucion is null;	
+	end;
+go
+
+create function dbo.prestamos_usuario (@id_usuario_reg varchar(10))
+	returns int
+	as
+	begin
+		declare @Cantidad int;
+	
+		select @Cantidad = count(*)
+		from ControlPrestamos 
+		where ID_Usuario = @id_usuario_reg and Dia_Devolucion is null;
+	
+		return @Cantidad;
+	end;
+go
+
+create procedure crear_prestamo 
+	@ISBN_reg varchar(13), 
+	@ID_reg varchar(10)
+	as
+	begin 
+		declare @Hoy date = sysdatetime();
+		if exists (select 1 from ControlPrestamos where ISBN = @ISBN_reg and Dia_Devolucion is null) 
+					or dbo.prestamos_usuario(@ID_reg) >= 5 
+			throw 51000, 'El libro no esta disponible o el usuario excedio el limite de prestamos.', 1;
+    	else if exists (select 1 from Usuario where Estado = 'Deshabilitado' and ID_Usuario = @ID_reg)
+			throw 51000, 'El usuario está deshabilitado.', 1;
+		else
+    		insert into ControlPrestamos(ID_Usuario, ISBN, Dia_Prestamos) 
+        	values (@ID_reg, @ISBN_reg, @Hoy);
+    end;
+go
+
+create procedure entregar_libro(@ISBN_reg varchar(13), @observacion_reg nvarchar(200))
+	as
+	begin
+		declare @Hoy date = sysdatetime();
+		
+		update ControlPrestamos
+		set Dia_Devolucion = @Hoy,
+			observacion = @observacion_reg
+		where @ISBN_reg = ControlPrestamos.ISBN and Dia_Devolucion is null;
+	end;
+go
+
+create procedure registrar_usuario(@nombre_reg nvarchar(60),
+									@tipo_id_reg varchar(10), 
+									@id_reg varchar(10), 
+									@pais_reg nvarchar(48), 
+									@ciudad_reg nvarchar(27), 
+									@direccion_reg varchar(100))
+	as
+	begin
+		insert into Usuario(Nombre, Tipo_ID, ID_Usuario, Pais, Ciudad, Direccion, Estado)
+		values
+		(@nombre_reg, @tipo_id_reg, @id_reg, @pais_reg, @ciudad_reg, @direccion_reg, 'Activo');
+	end;
+go
+
+create procedure registrar_autor(@nombre_reg nvarchar(60), 
+									@id_reg varchar(10), 
+									@pais_reg nvarchar(48))
+	as
+	begin
+		insert into Autor(Nombre, ID_Autor, Pais_Origen)
+		values
+		(@nombre_reg, @id_reg, @pais_reg);
+	end;
+go
+
+create procedure registrar_libro(@titulo_reg nvarchar(100), 
+								@fecha_publicacion_reg date, 
+								@isbn_reg varchar(13),
+								@id_autor_reg varchar(10)
+								)
+	as
+	begin
+		if exists (select 1 from autor where id_autor = @id_autor_reg) 
+			insert into libro (Titulo, Fecha_Publicacion, Codigo_ISBN, ID_Autor)
+			values (@titulo_reg, @fecha_publicacion_reg, @isbn_reg, @id_autor_reg);
+		else
+			throw 51000, 'El id de autor especificado no existe.', 1;
+	end;
+go
+
+create procedure historial_prestamos 
+	as
+	begin
+		select P.ID, U.Nombre, L.Titulo, P.Dia_Prestamos, P.Dia_Devolucion, P.Observacion
+		from ControlPrestamos P
+		inner join Libro L
+		on P.ISBN = L.Codigo_ISBN
+		inner join Usuario U
+		on P.ID_Usuario = U.ID_Usuario
+		where Dia_Devolucion is not null;
+	end;
+go
+
+create procedure cambio_estado(@id_reg varchar(10))
+	as
+	begin
+		if exists (select 1 from Usuario where Estado = 'Activo' and ID_Usuario = @id_reg)
+			update Usuario
+			set Estado = 'Deshabilitado' 
+			where ID_Usuario = @id_reg;
+		else
+			update Usuario
+			set Estado = 'Activo'
+			where ID_Usuario = @id_reg;
+	end;
+go
+
+create procedure estado_usuarios
+	as
+	begin
+		select Estado, ID_Usuario, Nombre from Usuario; 
+	end;
+go
+
+/*segunda parte prueba tecnica*/
+
+create procedure obtener_info_libro(@ISBN_reg varchar(13))
+	as
+	begin
+		if exists (select 1 from Libro where Codigo_ISBN = @ISBN_reg) 
+			select L.*, A.nombre
+			from Libro L
+			inner join Autor A
+			on L.ID_Autor = A.ID_Autor
+			where L.Codigo_ISBN = @ISBN_reg;	
+		else
+			throw 51000, 'El libro consultado no existe', 1;
+	end;
+go
+
+create function dbo.disponibilidad(@ISBN_reg varchar(13))
+	returns varchar(100)
+	as
+	begin
+		declare @Usuario nvarchar(60);
+		declare @message nvarchar(100); 
+		if not exists (select 1 from Libro where Codigo_ISBN = @ISBN_reg)
+		begin
+	        set @message = 'El libro no existe';
+		end
+		else if exists (select 1 from controlprestamos where isbn = @isbn_reg and dia_devolucion is null)
+		begin
+	        select @Usuario = U.nombre
+	        from controlprestamos P
+	        inner join libro L on P.ISBN = L.Codigo_ISBN
+	        inner join Usuario U on P.id_usuario = U.id_usuario
+	        where P.ISBN = @ISBN_reg and P.Dia_Devolucion is null;
+	        set @message = concat('El usuario: ', @Usuario, ' tiene el libro en uso');
+		end
+	    else
+		begin
+			set @message = 'El libro esta disponible';
+		end
+		return @message;
+	end;
+go
+
+

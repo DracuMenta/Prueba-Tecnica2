@@ -1,0 +1,226 @@
+/*MariaDB
+Script para la parte 1.*/
+
+CREATE SCHEMA `Biblioteca` DEFAULT CHARACTER SET latin1;
+use Biblioteca;
+
+create table Autor(
+	ID_Autor varchar(10) primary key not null,
+	Nombre nvarchar(60) not null,
+	Pais_Origen nvarchar(48) not null
+);
+
+create table Libro(
+	Codigo_ISBN varchar(13) primary key not null,
+	Titulo nvarchar(100) not null,
+	Fecha_publicacion date not null,
+	ID_Autor varchar(10) not null,
+	foreign key (ID_Autor) references Autor(Id_Autor)
+);
+
+create table Usuario(
+	ID_Usuario varchar(10) primary key not null,
+	Tipo_ID enum('TI','CC','CE','PPT','Pasaporte') not null,
+	Nombre nvarchar(60) not null,
+	Pais nvarchar(48) not null, 	
+	Ciudad nvarchar(27) not null,
+	Direccion varchar(100) not null,
+	Estado enum('Activo','Deshabilitado') not null
+);
+
+create table ControlPrestamos(
+	ID int auto_increment primary key not null,
+	ISBN varchar(13) not null,
+	ID_Usuario varchar(10) not null,
+	Dia_Prestamos date not null,
+	Dia_Devolucion date,
+	observacion nvarchar(200),
+	foreign key (ISBN) references Libro(Codigo_ISBN),
+	foreign key (ID_Usuario) references Usuario(ID_Usuario)
+);
+
+create procedure obtener_prestamos()
+	begin
+		select P.ID, U.Nombre, L.Titulo, P.Dia_Prestamos
+		from ControlPrestamos P
+		inner join Libro L
+		on P.ISBN = L.Codigo_ISBN
+		inner join Usuario U
+		on P.ID_Usuario = U.ID_Usuario
+		where Dia_Devolucion is null;	
+	end
+//
+
+//
+create procedure crear_prestamo(ISBN_reg varchar(13), ID_reg varchar(10))
+	begin 
+		set @Hoy = cast(now() as date);
+		if exists (select 1 from ControlPrestamos where ISBN = ISBN_reg and Dia_Devolucion is null) 
+					or prestamos_usuario(ID_reg) >= 5 then
+        	signal sqlstate '45000' 
+        	set message_text = 'El libro no esta disponible o el usuario excedio el limite de prestamos.';
+    	elseif (select 1 from Usuario where Estado = 'Deshabilitado' and ID_Usuario = ID_reg) then
+    		signal sqlstate '45000' 
+        	set message_text = 'El usuario está deshabilitado.';
+		else
+    		insert into ControlPrestamos(ID_Usuario, ISBN, Dia_Prestamos) 
+        	values (ID_reg, ISBN_reg, @Hoy);
+    	
+		end if;
+    end
+//
+
+//
+create procedure entregar_libro(ISBN_reg varchar(13), observacion_reg nvarchar(200))
+	begin
+		set @Hoy = cast(now() as date);
+		
+		update ControlPrestamos
+		set Dia_Devolucion = @Hoy,
+			observacion = observacion_reg
+		where ISBN_reg = ControlPrestamos.ISBN and Dia_Devolucion is null;
+	end
+//
+
+//
+create procedure registrar_usuario(nombre_reg nvarchar(60),
+									tipo_id_reg enum('TI','CC','CE','PPT','Pasaporte'), 
+									id_reg varchar(10), 
+									pais_reg nvarchar(48), 
+									ciudad_reg nvarchar(27), 
+									direccion_reg varchar(100))
+	begin
+		insert into Usuario(Nombre, Tipo_ID, ID_Usuario, Pais, Ciudad, Direccion, Estado)
+		values
+		(nombre_reg, tipo_id_reg, id_reg, pais_reg, ciudad_reg, direccion_reg, 'Activo');
+	end
+//
+
+
+
+//
+create procedure registrar_autor(nombre_reg nvarchar(60), 
+									id_reg varchar(10), 
+									pais_reg nvarchar(48))
+	begin
+		insert into Autor(Nombre, ID_Autor, Pais_Origen)
+		values
+		(nombre_reg, id_reg, pais_reg);
+	end
+//
+
+//
+create procedure registrar_libro(
+    titulo_reg nvarchar(100), 
+    fecha_publicacion_reg date, 
+    isbn_reg varchar(13),
+    id_autor_reg varchar(10)
+)
+begin
+    if exists (select 1 from autor where id_autor = id_autor_reg) then
+        insert into libro (Titulo, Fecha_Publicacion, Codigo_ISBN, ID_Autor)
+        values (titulo_reg, fecha_publicacion_reg, isbn_reg, id_autor_reg);
+    else
+        signal sqlstate '45000' 
+        set message_text = 'el id de autor especificado no existe.';
+    end if;
+end
+//
+
+//
+create procedure historial_prestamos()
+	begin
+		select P.ID, U.Nombre, L.Titulo, P.Dia_Prestamos, P.Dia_Devolucion, P.Observacion
+		from ControlPrestamos P
+		inner join Libro L
+		on P.ISBN = L.Codigo_ISBN
+		inner join Usuario U
+		on P.ID_Usuario = U.ID_Usuario
+		where Dia_Devolucion is not null;
+	end
+//
+
+//
+create procedure cambio_estado(id_reg varchar(10))
+	begin
+		if exists (select 1 from Usuario where Estado = 'Activo' and ID_Usuario = id_reg) then
+			update Usuario
+			set Estado = 'Deshabilitado' 
+			where ID_Usuario = id_reg;
+		else
+			update Usuario
+			set Estado = 'Activo'
+			where ID_Usuario = id_reg;
+		end if;
+	end
+//
+
+//
+create procedure estado_usuarios()
+	begin
+		select Estado, ID_Usuario, Nombre from Usuario; 
+	end
+//
+
+//
+create function prestamos_usuario(id_usuario_reg varchar(10))
+	returns int
+	
+	begin
+		declare Cantidad int;
+	
+		select count(*)
+		into Cantidad
+		from ControlPrestamos 
+		where ID_Usuario = id_usuario_reg and Dia_Devolucion is null;
+	
+		return Cantidad;
+	end
+//
+
+/*Script para la parte 1.
+Mismas tablas */
+//
+create procedure obtener_info_libro(ISBN_reg varchar(13))
+	begin
+		if exists (select 1 from Libro where Codigo_ISBN = ISBN_reg) then
+			select L.*, A.nombre
+			from Libro L
+			inner join Autor A
+			on L.ID_Autor = A.ID_Autor
+			where L.Codigo_ISBN = ISBN_reg;	
+		else
+			signal sqlstate '45000' 
+        	set message_text = 'El libro consultado no existe';
+		end if;
+	end
+//
+
+//
+create function disponibilidad(ISBN_reg varchar(13))
+	returns varchar(100)
+	
+	begin
+		declare Usuario nvarchar(60);
+		declare message nvarchar(100); 
+		if exists (select 1 from controlprestamos where isbn = isbn_reg and dia_devolucion is null) then
+	        select U.nombre into Usuario
+	        from controlprestamos P
+	        inner join libro L on P.ISBN = L.Codigo_ISBN
+	        inner join Usuario U on P.id_usuario = U.id_usuario
+	        where P.ISBN = ISBN_reg and P.Dia_Devolucion is null
+	        limit 1;
+	        
+	        set message = concat('El usuario: ', Usuario, ' tiene el libro en uso');
+	        return message;
+	        
+	    elseif not exists (select 1 from Libro where Codigo_ISBN = ISBN_reg) then
+	        set message = 'El libro no existe';
+	        return message;
+	        
+	    else
+	        set message = 'El libro esta disponible';
+	        return message;
+	    end if;
+	end
+//	
