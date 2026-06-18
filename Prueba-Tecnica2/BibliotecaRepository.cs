@@ -11,12 +11,9 @@ namespace Prueba_Tecnica2.Data
 
         public BibliotecaRepository(IConfiguration configuration)
         {
-            _connectionString =
-                configuration.GetConnectionString("BibliotecaDb");
+            _connectionString = configuration.GetConnectionString("BibliotecaDb");
         }
-
-
-
+           
         public LibroInfoResponse ObtenerLibro(string ISBN)
         {
             try { 
